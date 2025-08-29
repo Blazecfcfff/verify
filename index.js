@@ -1,20 +1,25 @@
+require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
-const app = express();
-const port = 3000;
 
-const CLIENT_ID = '1368394210331594782';
-const CLIENT_SECRET = 'HNycC4_-WBITzHDsxa5hFWSbhbVfKAKk';
-const REDIRECT_URI = `http://localhost:${port}/callback`; // Change to your domain + https:// in production
-const BOT_TOKEN = 'MTM2ODM5NDIxMDMzMTU5NDc4Mg.GX_nLS.NoJvxyX-GMkMQxr-nwo8gdE8KeurDX1e7tmIqw';
-const GUILD_ID = '1410517436956151830';
-const ROLE_ID = '1410878436544614502';
+const app = express();
+const port = process.env.PORT || 3000;
+
+const {
+  CLIENT_ID,
+  CLIENT_SECRET,
+  REDIRECT_URI,
+  BOT_TOKEN,
+  GUILD_ID,
+  ROLE_ID,
+  SESSION_SECRET
+} = process.env;
 
 app.use(session({
-    secret: 'your-session-secret',
-    resave: false,
-    saveUninitialized: false
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false
 }));
 
 const style = `
@@ -54,109 +59,157 @@ const style = `
   .button:hover {
     background-color: #187bcd;
   }
+
+  .loader {
+    border: 8px solid #333;
+    border-top: 8px solid #1e90ff;
+    border-radius: 50%;
+    width: 60px;
+    height: 60px;
+    animation: spin 1s linear infinite;
+    margin: 20px auto;
+  }
+
+  @keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+  }
+
+  .fade-in {
+    animation: fadeIn 2s ease-in-out;
+  }
+
+  @keyframes fadeIn {
+    0% { opacity: 0; }
+    100% { opacity: 1; }
+  }
 `;
 
 app.get('/', (req, res) => {
-    const user = req.session.user;
+  const user = req.session.user;
 
-    res.send(`
-      <html>
-        <head>
-          <title>Discord Verification</title>
-          <style>${style}</style>
-        </head>
-        <body>
-          <div class="card">
-            ${!user ? `
-              <h2>Welcome to the AllyCore Verifier</h2>
-              <p>Click below to verify yourself and get access.</p>
-              <a class="button" href="/login">Login with Discord</a>
-            ` : `
-              <h2>Verified In AllyCore!</h2>
-              <p>Welcome, ${user.username}#${user.discriminator}</p>
-              <p>You’ve been assigned the role.</p>
-            `}
-          </div>
-        </body>
-      </html>
-    `);
+  res.send(`
+    <html>
+      <head>
+        <title>Discord Verification</title>
+        <style>${style}</style>
+      </head>
+      <body>
+        <div class="card fade-in">
+          ${!user ? `
+            <h2>Welcome to the AllyCore Verifier</h2>
+            <p>Click below to verify yourself and get access.</p>
+            <a class="button" href="/login">Login with Discord</a>
+          ` : `
+            <h2>Verified In AllyCore!</h2>
+            <p>Welcome, ${user.username}#${user.discriminator}</p>
+            <p>You’ve been assigned the role.</p>
+          `}
+        </div>
+      </body>
+    </html>
+  `);
+});
+
+app.get('/verifying', (req, res) => {
+  res.send(`
+    <html>
+      <head>
+        <title>Verifying...</title>
+        <style>${style}</style>
+      </head>
+      <body>
+        <div class="card fade-in">
+          <h2>Verifying your Discord...</h2>
+          <div class="loader"></div>
+          <p>Please wait while we finish the verification process.</p>
+        </div>
+        <script>
+          setTimeout(() => {
+            window.location.href = "/";
+          }, 3000);
+        </script>
+      </body>
+    </html>
+  `);
 });
 
 app.get('/login', (req, res) => {
-    const scope = 'identify guilds.join';
-    const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${scope}`;
-    res.redirect(url);
+  const scope = 'identify guilds.join';
+  const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${scope}`;
+  res.redirect(url);
 });
 
 app.get('/callback', async (req, res) => {
-    const code = req.query.code;
-    if (!code) return res.send('No code provided');
+  const code = req.query.code;
+  if (!code) return res.send('No code provided');
 
-    try {
-        // Exchange code for access token
-        const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
-            client_id: CLIENT_ID,
-            client_secret: CLIENT_SECRET,
-            grant_type: 'authorization_code',
-            code,
-            redirect_uri: REDIRECT_URI,
-            scope: 'identify guilds.join'
-        }), {
-            headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
-        });
+  try {
+    const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
+      client_id: CLIENT_ID,
+      client_secret: CLIENT_SECRET,
+      grant_type: 'authorization_code',
+      code,
+      redirect_uri: REDIRECT_URI,
+      scope: 'identify guilds.join'
+    }), {
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' }
+    });
 
-        const access_token = tokenRes.data.access_token;
+    const access_token = tokenRes.data.access_token;
 
-        // Get user info
-        const userRes = await axios.get('https://discord.com/api/users/@me', {
-            headers: { Authorization: `Bearer ${access_token}` }
-        });
+    const userRes = await axios.get('https://discord.com/api/users/@me', {
+      headers: { Authorization: `Bearer ${access_token}` }
+    });
 
-        const user = userRes.data;
-        req.session.user = user;
+    const user = userRes.data;
+    req.session.user = user;
 
-        // Add user to guild
-        await axios.put(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`, {
-            access_token: access_token
-        }, {
-            headers: {
-                Authorization: `Bot ${BOT_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
-        });
+    await axios.put(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`, {
+      access_token: access_token
+    }, {
+      headers: {
+        Authorization: `Bot ${BOT_TOKEN}`,
+        'Content-Type': 'application/json'
+      }
+    });
 
-        // Get current roles of the user in the guild to avoid re-adding role
-        const memberRes = await axios.get(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`, {
-            headers: {
-                Authorization: `Bot ${BOT_TOKEN}`
-            }
-        });
+    const memberRes = await axios.get(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`, {
+      headers: {
+        Authorization: `Bot ${BOT_TOKEN}`
+      }
+    });
 
-        const currentRoles = memberRes.data.roles || [];
+    const currentRoles = memberRes.data.roles || [];
 
-        // Add role only if user doesn't already have it
-        if (!currentRoles.includes(ROLE_ID)) {
-            await axios.put(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}/roles/${ROLE_ID}`, {}, {
-                headers: {
-                    Authorization: `Bot ${BOT_TOKEN}`
-                }
-            });
+    if (!currentRoles.includes(ROLE_ID)) {
+      await axios.put(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}/roles/${ROLE_ID}`, {}, {
+        headers: {
+          Authorization: `Bot ${BOT_TOKEN}`
         }
-
-        res.redirect('/');
-    } catch (err) {
-        console.error('Error:', err.response?.data || err.message);
-
-        // Send more descriptive error to user
-        let message = 'An error occurred.';
-        if (err.response && err.response.data) {
-            if (err.response.data.message) message = `Error: ${err.response.data.message}`;
-        }
-        res.send(`<h2>${message}</h2><p><a href="/">Return home</a></p>`);
+      });
     }
+
+    res.redirect('/verifying');
+  } catch (err) {
+    console.error('Error:', err.response?.data || err.message);
+
+    let message = 'An error occurred.';
+    if (err.response?.data?.message) {
+      message = `Error: ${err.response.data.message}`;
+    }
+
+    res.send(`<h2>${message}</h2><p><a href="/">Return home</a></p>`);
+  }
 });
+
+app.listen(port, () => {
+  console.log(`🚀 Server ready at http://localhost:${port}`);
+});
+
 
 app.listen(port, () => {
     console.log(`🚀 Server ready at http://localhost:${port}`);
 });
+
 
