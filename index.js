@@ -7,7 +7,7 @@ const port = 3000;
 const CLIENT_ID = '1368394210331594782';
 const CLIENT_SECRET = 'HNycC4_-WBITzHDsxa5hFWSbhbVfKAKk';
 const REDIRECT_URI = `http://localhost:${port}/callback`; // Change to your domain + https:// in production
-const BOT_TOKEN = 'MTM2ODM5NDIxMDMzMTU5NDc4Mg.Gs9WiG.Fb4CGRSr-mTN1p9CHBzhJvkSmIvK1w4Zek6ECc';
+const BOT_TOKEN = 'MTM2ODM5NDIxMDMzMTU5NDc4Mg.GX_nLS.NoJvxyX-GMkMQxr-nwo8gdE8KeurDX1e7tmIqw';
 const GUILD_ID = '1410517436956151830';
 const ROLE_ID = '1410878436544614502';
 
@@ -159,3 +159,4 @@ app.get('/callback', async (req, res) => {
 app.listen(port, () => {
     console.log(`🚀 Server ready at http://localhost:${port}`);
 });
+
