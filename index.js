@@ -1,27 +1,26 @@
-require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
 const axios = require('axios');
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000; // hardcoded port
 
-const {
-  CLIENT_ID,
-  CLIENT_SECRET,
-  REDIRECT_URI,
-  BOT_TOKEN,
-  GUILD_ID,
-  ROLE_ID,
-  SESSION_SECRET
-} = process.env;
+// Hardcoded credentials and IDs
+const CLIENT_ID = '1368394210331594782';
+const CLIENT_SECRET = 'HNycC4_-WBITzHDsxa5hFWSbhbVfKAKk';
+const REDIRECT_URI = `http://localhost:${port}/callback`; // Update if deployed
+const GUILD_ID = '1410517436956151830';
+const ROLE_ID = '1410878436544614502';
+const SESSION_SECRET = 'your-session-secret';
 
+// Session config
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false
 }));
 
+// Shared CSS style
 const style = `
   body {
     background-color: #111;
@@ -85,6 +84,7 @@ const style = `
   }
 `;
 
+// Home page
 app.get('/', (req, res) => {
   const user = req.session.user;
 
@@ -111,6 +111,7 @@ app.get('/', (req, res) => {
   `);
 });
 
+// Verifying screen
 app.get('/verifying', (req, res) => {
   res.send(`
     <html>
@@ -134,17 +135,20 @@ app.get('/verifying', (req, res) => {
   `);
 });
 
+// Login with Discord
 app.get('/login', (req, res) => {
   const scope = 'identify guilds.join';
   const url = `https://discord.com/api/oauth2/authorize?client_id=${CLIENT_ID}&redirect_uri=${encodeURIComponent(REDIRECT_URI)}&response_type=code&scope=${scope}`;
   res.redirect(url);
 });
 
+// Callback after Discord login
 app.get('/callback', async (req, res) => {
   const code = req.query.code;
   if (!code) return res.send('No code provided');
 
   try {
+    // Exchange code for access token
     const tokenRes = await axios.post('https://discord.com/api/oauth2/token', new URLSearchParams({
       client_id: CLIENT_ID,
       client_secret: CLIENT_SECRET,
@@ -158,6 +162,7 @@ app.get('/callback', async (req, res) => {
 
     const access_token = tokenRes.data.access_token;
 
+    // Get user info
     const userRes = await axios.get('https://discord.com/api/users/@me', {
       headers: { Authorization: `Bearer ${access_token}` }
     });
@@ -165,6 +170,7 @@ app.get('/callback', async (req, res) => {
     const user = userRes.data;
     req.session.user = user;
 
+    // Add user to guild
     await axios.put(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`, {
       access_token: access_token
     }, {
@@ -174,6 +180,7 @@ app.get('/callback', async (req, res) => {
       }
     });
 
+    // Get current roles of the user
     const memberRes = await axios.get(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}`, {
       headers: {
         Authorization: `Bot ${BOT_TOKEN}`
@@ -182,6 +189,7 @@ app.get('/callback', async (req, res) => {
 
     const currentRoles = memberRes.data.roles || [];
 
+    // Assign role if missing
     if (!currentRoles.includes(ROLE_ID)) {
       await axios.put(`https://discord.com/api/guilds/${GUILD_ID}/members/${user.id}/roles/${ROLE_ID}`, {}, {
         headers: {
@@ -203,13 +211,7 @@ app.get('/callback', async (req, res) => {
   }
 });
 
+// Start server
 app.listen(port, () => {
   console.log(`🚀 Server ready at http://localhost:${port}`);
 });
-
-
-app.listen(port, () => {
-    console.log(`🚀 Server ready at http://localhost:${port}`);
-});
-
-
