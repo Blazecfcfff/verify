@@ -74,10 +74,6 @@ const style = `
     100% { transform: rotate(360deg); }
   }
 
-  .fade-in {
-    animation: fadeIn 2s ease-in-out;
-  }
-
   @keyframes fadeIn {
     0% { opacity: 0; }
     100% { opacity: 1; }
@@ -215,4 +211,5 @@ app.get('/callback', async (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Server ready at http://localhost:${port}`);
 });
+
 
