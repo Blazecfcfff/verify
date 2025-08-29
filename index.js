@@ -9,6 +9,7 @@ const port = 3000; // hardcoded port
 const CLIENT_ID = '1368394210331594782';
 const CLIENT_SECRET = 'HNycC4_-WBITzHDsxa5hFWSbhbVfKAKk';
 const REDIRECT_URI = `https://verify.allycore.xyz/callback`; // Update if deployed
+const BOT_TOKEN = process.env.BOT_TOKEN;
 const GUILD_ID = '1410517436956151830';
 const ROLE_ID = '1410878436544614502';
 const SESSION_SECRET = 'your-session-secret';
@@ -211,5 +212,6 @@ app.get('/callback', async (req, res) => {
 app.listen(port, () => {
   console.log(`🚀 Server ready at http://localhost:${port}`);
 });
+
 
 
